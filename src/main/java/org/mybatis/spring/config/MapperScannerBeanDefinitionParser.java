@@ -37,6 +37,7 @@ import org.w3c.dom.Element;
 import org.w3c.dom.Node;
 
 /**
+ * <mybatis:scan /> 的解析器（实现 BeanDefinitionParser 接口）
  * A {#code BeanDefinitionParser} that handles the element scan of the MyBatis. namespace
  *
  * @author Lishu Luo

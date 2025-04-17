@@ -46,9 +46,14 @@ import org.springframework.util.ClassUtils;
 import org.springframework.util.StringUtils;
 
 /**
+ * @MapperScann 的注册器
+ * 将扫描到的 Mapper 接口，注册成 beanClass 为 MapperFactoryBean 的 BeanDefinition 对象，从而实现创建 Mapper 对象
+ *
  * A {@link ImportBeanDefinitionRegistrar} to allow annotation configuration of MyBatis mapper scanning. Using
  * an @Enable annotation allows beans to be registered via @Component configuration, whereas implementing
  * {@code BeanDefinitionRegistryPostProcessor} will work for XML configuration.
+ * {@link ImportBeanDefinitionRegistrar}允许MyBatis映射器扫描的注释配置。使用@Enable注释允许通过@Component配置注册bean，
+ * 而实现{@code BeanDefinitionRegistryPostProcessor}将适用于XML配置。
  *
  * @author Michael Lanyon
  * @author Eduardo Macarron
@@ -61,6 +66,8 @@ import org.springframework.util.StringUtils;
  */
 public class MapperScannerRegistrar implements ImportBeanDefinitionRegistrar, ResourceLoaderAware {
 
+  // ResourceLoader 对象
+  // 因为实现了 ResourceLoaderAware 接口，所以 resourceLoader 属性，能够被注入
   // Note: Do not move resourceLoader via cleanup
   private ResourceLoader resourceLoader;
 
@@ -69,11 +76,18 @@ public class MapperScannerRegistrar implements ImportBeanDefinitionRegistrar, Re
     this.resourceLoader = resourceLoader;
   }
 
+  /**
+   * registerBeanDefinitions 方法是 ImportBeanDefinitionRegistrar 接口的核心方法，用于动态注册 Bean 定义
+   * @param importingClassMetadata 提供访问 导入该配置类的注解元数据 的能力（即解析 @Import 注解的源头类的注解信息）
+   * @param registry 提供 动态注册/管理 Bean定义 的接口
+   */
   @Override
   public void registerBeanDefinitions(AnnotationMetadata importingClassMetadata, BeanDefinitionRegistry registry) {
+    // 获得 @MapperScan 注解信息,并封装到AnnotationAttributes对象mapperScanAttrs中
     var mapperScanAttrs = AnnotationAttributes
         .fromMap(importingClassMetadata.getAnnotationAttributes(MapperScan.class.getName()));
     if (mapperScanAttrs != null) {
+      // 扫描包，将扫描到的 Mapper 接口，注册成 beanClass 为 MapperFactoryBean 的 BeanDefinition 对象
       registerBeanDefinitions(importingClassMetadata, mapperScanAttrs, registry,
           generateBaseBeanName(importingClassMetadata, 0));
     }
@@ -82,6 +96,7 @@ public class MapperScannerRegistrar implements ImportBeanDefinitionRegistrar, Re
   void registerBeanDefinitions(AnnotationMetadata annoMeta, AnnotationAttributes annoAttrs,
       BeanDefinitionRegistry registry, String beanName) {
 
+    // 注册MapperScannerConfigurer的beanDefinition对象
     var builder = BeanDefinitionBuilder.genericBeanDefinition(MapperScannerConfigurer.class);
     builder.addPropertyValue("processPropertyPlaceHolders", annoAttrs.getBoolean("processPropertyPlaceHolders"));
 
@@ -237,6 +252,8 @@ public class MapperScannerRegistrar implements ImportBeanDefinitionRegistrar, Re
   }
 
   /**
+   * 是 MapperScannerRegistrar 的内部静态类，继承 MapperScannerRegistrar 类，@MapperScans 的注册器
+   * 即RegisterBeanDefinitions循环版
    * A {@link MapperScannerRegistrar} for {@link MapperScans}.
    *
    * @since 2.0.0
@@ -244,10 +261,12 @@ public class MapperScannerRegistrar implements ImportBeanDefinitionRegistrar, Re
   static class RepeatingRegistrar extends MapperScannerRegistrar {
     @Override
     public void registerBeanDefinitions(AnnotationMetadata importingClassMetadata, BeanDefinitionRegistry registry) {
+      // 获得 @MapperScans 注解信息
       var mapperScansAttrs = AnnotationAttributes
           .fromMap(importingClassMetadata.getAnnotationAttributes(MapperScans.class.getName()));
       if (mapperScansAttrs != null) {
         var annotations = mapperScansAttrs.getAnnotationArray("value");
+        // 遍历 @MapperScans 的值，调用 `#registerBeanDefinitions(mapperScanAttrs, registry)` 方法，循环扫描处理
         for (var i = 0; i < annotations.length; i++) {
           registerBeanDefinitions(importingClassMetadata, annotations[i], registry,
               generateBaseBeanName(importingClassMetadata, i));

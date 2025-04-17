@@ -22,11 +22,16 @@ import org.mybatis.spring.SqlSessionTemplate;
 import org.mybatis.spring.support.SqlSessionDaoSupport;
 import org.springframework.beans.factory.FactoryBean;
 
+import java.math.BigDecimal;
+
 /**
+ * 实现 FactoryBean 接口，继承 SqlSessionDaoSupport 抽象类
+ * 对于Mapper接口的BeanDefinition对象value都会塞这个，然后创建 Mapper 对象的代理实现类
  * BeanFactory that enables injection of MyBatis mapper interfaces. It can be set up with a SqlSessionFactory or a
  * pre-configured SqlSessionTemplate.
+ * 支持注入MyBatis映射器接口的BeanFactory。它可以使用SqlSessionFactory或预先配置的SqlSessionTemplate进行设置。
  * <p>
- * Sample configuration:
+ * Sample configuration: 配置实例：
  *
  * <pre class="code">
  * {@code
@@ -45,6 +50,7 @@ import org.springframework.beans.factory.FactoryBean;
  * </pre>
  * <p>
  * Note that this factory can only inject <em>interfaces</em>, not concrete classes.
+ * 注意，这个工厂只能注入接口，而不能注入具体类
  *
  * @author Eduardo Macarron
  *
@@ -52,8 +58,10 @@ import org.springframework.beans.factory.FactoryBean;
  */
 public class MapperFactoryBean<T> extends SqlSessionDaoSupport implements FactoryBean<T> {
 
+  // Mapper 接口
   private Class<T> mapperInterface;
 
+  // 是否添加到 {@link Configuration} 中
   private boolean addToConfig = true;
 
   public MapperFactoryBean() {
@@ -66,10 +74,13 @@ public class MapperFactoryBean<T> extends SqlSessionDaoSupport implements Factor
 
   @Override
   protected void checkDaoConfig() {
+    // 校验 sqlSessionTemplate 非空
     super.checkDaoConfig();
 
+    // 校验 mapperInterface 非空
     notNull(this.mapperInterface, "Property 'mapperInterface' is required");
 
+    // 添加 Mapper 接口到 configuration 中
     var configuration = getSqlSession().getConfiguration();
     if (this.addToConfig && !configuration.hasMapper(this.mapperInterface)) {
       try {
@@ -83,6 +94,8 @@ public class MapperFactoryBean<T> extends SqlSessionDaoSupport implements Factor
     }
   }
 
+  // 获得 Mapper 对象
+  // 返回的是基于 Mapper 接口自动生成的代理对象 即MapperProxy
   @Override
   public T getObject() throws Exception {
     return getSqlSession().getMapper(this.mapperInterface);

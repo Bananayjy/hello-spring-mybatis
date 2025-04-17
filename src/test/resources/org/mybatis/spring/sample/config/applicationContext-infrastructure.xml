@@ -30,20 +30,24 @@
      http://www.springframework.org/schema/jdbc http://www.springframework.org/schema/jdbc/spring-jdbc.xsd">
 
     <!-- in-memory database and a datasource -->
+    <!-- 内存数据库和数据源 -->
     <jdbc:embedded-database id="dataSource">
         <jdbc:script location="classpath:org/mybatis/spring/sample/db/database-schema.sql"/>
         <jdbc:script location="classpath:org/mybatis/spring/sample/db/database-test-data.sql"/>
     </jdbc:embedded-database>
 
     <!-- transaction manager, use JtaTransactionManager for global tx -->
+    <!-- 事务管理器，使用JtaTransactionManager全局tx -->
     <bean id="transactionManager" class="org.springframework.jdbc.datasource.DataSourceTransactionManager">
         <constructor-arg ref="dataSource" />
     </bean>
 
     <!-- enable transaction demarcation with annotations -->
+    <!--  启用带有注释的事务划分-->
     <tx:annotation-driven />
 
     <!-- simplest possible SqlSessionFactory configuration -->
+    <!-- 最简单的SqlSessionFactory配置-->
     <bean id="sqlSessionFactory" class="org.mybatis.spring.SqlSessionFactoryBean">
         <property name="dataSource" ref="dataSource" />
         <!-- Directly specify the location of the MyBatis mapper xml file. This
@@ -59,6 +63,7 @@
     </bean>
 
     <!-- simple transactional service layer bean; MyBatis-Spring will create a proxy for the userMapper bean -->
+    <!-- 简单事务性服务层bean；MyBatis-Spring将为userMapper bean创建一个代理 -->
     <bean id="fooService" class="org.mybatis.spring.sample.service.FooService">
         <constructor-arg ref="userMapper" />
     </bean>

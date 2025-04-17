@@ -24,6 +24,7 @@ import java.lang.annotation.Target;
 import org.springframework.context.annotation.Import;
 
 /**
+ * 多 @MapperScan 的注解
  * The Container annotation that aggregates several {@link MapperScan} annotations.
  * <p>
  * Can be used natively, declaring several nested {@link MapperScan} annotations. Can also be used in conjunction with
