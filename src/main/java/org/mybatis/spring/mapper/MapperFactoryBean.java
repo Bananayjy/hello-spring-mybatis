@@ -94,7 +94,7 @@ public class MapperFactoryBean<T> extends SqlSessionDaoSupport implements Factor
     }
   }
 
-  // 获得 Mapper 对象
+  // 重写FactoryBean的getObject，在Bean生命周期中创建对象的时候 获得 Mapper代理对象
   // 返回的是基于 Mapper 接口自动生成的代理对象 即MapperProxy
   @Override
   public T getObject() throws Exception {
