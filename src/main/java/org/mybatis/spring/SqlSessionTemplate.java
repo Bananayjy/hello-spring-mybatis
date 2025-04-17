@@ -42,6 +42,9 @@ import org.springframework.beans.factory.DisposableBean;
 import org.springframework.dao.support.PersistenceExceptionTranslator;
 
 /**
+ *
+ * SqlSession 操作模板实现类
+ * 实际上，代码实现和 org.apache.ibatis.session.SqlSessionManager 超级相似。或者说，这是 mybatis-spring 项目实现的 “SqlSessionManager” 类
  * Thread safe, Spring managed, {@code SqlSession} that works with Spring transaction management to ensure that the
  * actual SqlSession used is the one associated with the current Spring transaction. In addition, it manages the session
  * life-cycle, including closing, committing or rolling back the session as necessary based on the Spring transaction
@@ -74,12 +77,16 @@ import org.springframework.dao.support.PersistenceExceptionTranslator;
  */
 public class SqlSessionTemplate implements SqlSession, DisposableBean {
 
+  // SqlSession工厂对象
   private final SqlSessionFactory sqlSessionFactory;
 
+  // 执行器类型，根据它来创建对应类型的执行器
   private final ExecutorType executorType;
 
+  // SqlSession 代理对象
   private final SqlSession sqlSessionProxy;
 
+  // 异常转换器（对异常处理的转换）
   private final PersistenceExceptionTranslator exceptionTranslator;
 
   /**
@@ -128,8 +135,12 @@ public class SqlSessionTemplate implements SqlSession, DisposableBean {
     this.sqlSessionFactory = sqlSessionFactory;
     this.executorType = executorType;
     this.exceptionTranslator = exceptionTranslator;
-    this.sqlSessionProxy = (SqlSession) newProxyInstance(SqlSessionFactory.class.getClassLoader(),
-        new Class[] { SqlSession.class }, new SqlSessionInterceptor());
+    // 使用java动态代理 创建 sqlSessionProxy 对象(是对SqlSessionFactory对象的代理)
+    this.sqlSessionProxy = (SqlSession) newProxyInstance(
+      SqlSessionFactory.class.getClassLoader(), // 1. 类加载器
+        new Class[] { SqlSession.class }, // 2. 代理接口
+      new SqlSessionInterceptor() // 3. 代理逻辑处理器
+    );
   }
 
   public SqlSessionFactory getSqlSessionFactory() {
@@ -320,6 +331,7 @@ public class SqlSessionTemplate implements SqlSession, DisposableBean {
   }
 
   /**
+   * SqlSessionInterceptor ，是 SqlSessionTemplate 的内部类，实现 InvocationHandler 接口，将 SqlSession 的操作，路由到 Spring 托管的事务管理器中
    * Proxy needed to route MyBatis method calls to the proper SqlSession got from Spring's Transaction Manager It also
    * unwraps exceptions thrown by {@code Method#invoke(Object, Object...)} to pass a {@code PersistenceException} to the
    * {@code PersistenceExceptionTranslator}.
@@ -327,30 +339,44 @@ public class SqlSessionTemplate implements SqlSession, DisposableBean {
   private class SqlSessionInterceptor implements InvocationHandler {
     @Override
     public Object invoke(Object proxy, Method method, Object[] args) throws Throwable {
+      // 获得 SqlSession 对象
       var sqlSession = getSqlSession(SqlSessionTemplate.this.sqlSessionFactory, SqlSessionTemplate.this.executorType,
           SqlSessionTemplate.this.exceptionTranslator);
       try {
+        // 执行 SQL 操作
         var result = method.invoke(sqlSession, args);
+        // 如果非 Spring 托管的 SqlSession 对象，则提交事务
         if (!isSqlSessionTransactional(sqlSession, SqlSessionTemplate.this.sqlSessionFactory)) {
           // force commit even on non-dirty sessions because some databases require
           // a commit/rollback before calling close()
           sqlSession.commit(true);
         }
+        // 返回结果
         return result;
       } catch (Throwable t) {
+        // 如果是 PersistenceException 异常，则进行转换
         var unwrapped = unwrapThrowable(t);
         if (SqlSessionTemplate.this.exceptionTranslator != null && unwrapped instanceof PersistenceException) {
           // release the connection to avoid a deadlock if the translator is no loaded. See issue #22
+          // 根据情况，关闭 SqlSession 对象
+          // 如果非 Spring 托管的 SqlSession 对象，则关闭 SqlSession 对象
+          // 如果是 Spring 托管的 SqlSession 对象，则减少其 SqlSessionHolder 的计数
           closeSqlSession(sqlSession, SqlSessionTemplate.this.sqlSessionFactory);
+          //  置空，避免下面 final 又做处理
           sqlSession = null;
+          // 进行转换
           Throwable translated = SqlSessionTemplate.this.exceptionTranslator
               .translateExceptionIfPossible((PersistenceException) unwrapped);
           if (translated != null) {
             unwrapped = translated;
           }
         }
+        // 抛出异常
         throw unwrapped;
       } finally {
+        // 根据情况，关闭 SqlSession 对象
+        // 如果非 Spring 托管的 SqlSession 对象，则关闭 SqlSession 对象
+        // 如果是 Spring 托管的 SqlSession 对象，则减少其 SqlSessionHolder 的计数
         if (sqlSession != null) {
           closeSqlSession(sqlSession, SqlSessionTemplate.this.sqlSessionFactory);
         }
