@@ -32,6 +32,8 @@ import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.dao.InvalidDataAccessResourceUsageException;
 
 /**
+ * MyBatis 批量写入器
+ * 实现 org.springframework.batch.item.ItemWriter、InitializingBean 接口
  * {@code ItemWriter} that uses the batching features from {@code SqlSessionTemplate} to execute a batch of statements
  * for all items provided.
  * <p>
@@ -53,12 +55,16 @@ public class MyBatisBatchItemWriter<T> implements ItemWriter<T>, InitializingBea
 
   private static final Logger LOGGER = LoggerFactory.getLogger(MyBatisBatchItemWriter.class);
 
+  // SqlSessionTemplate 对象
   private SqlSessionTemplate sqlSessionTemplate;
 
+  // 语句编号
   private String statementId;
 
+  // 是否校验
   private boolean assertUpdates = true;
 
+  // 参数转换器
   private Converter<T, ?> itemToParameterConverter = new PassThroughConverter<>();
 
   /**
@@ -136,18 +142,22 @@ public class MyBatisBatchItemWriter<T> implements ItemWriter<T>, InitializingBea
     if (!items.isEmpty()) {
       LOGGER.debug(() -> "Executing batch with " + items.size() + " items.");
 
+      // 遍历 items 数组，提交到 sqlSessionTemplate 中
       for (T item : items) {
         sqlSessionTemplate.update(statementId, itemToParameterConverter.convert(item));
       }
 
+      // 执行一次批量操作
       var results = sqlSessionTemplate.flushStatements();
 
       if (assertUpdates) {
+        // 如果有多个返回结果，抛出 InvalidDataAccessResourceUsageException 异常
         if (results.size() != 1) {
           throw new InvalidDataAccessResourceUsageException("Batch execution returned invalid results. "
               + "Expected 1 but number of BatchResult objects returned was " + results.size());
         }
 
+        // 遍历执行结果，若存在未更新的情况，则抛出 EmptyResultDataAccessException 异常
         var updateCounts = results.get(0).getUpdateCounts();
 
         for (var i = 0; i < updateCounts.length; i++) {
@@ -161,6 +171,8 @@ public class MyBatisBatchItemWriter<T> implements ItemWriter<T>, InitializingBea
     }
   }
 
+  // PassThroughConverter ，是 MyBatisBatchItemWriter 的内部静态类，实现 Converter 接口，直接返回自身
+  // 这是一个默认的 Converter 实现类。我们可以自定义 Converter 实现类，设置到 MyBatisBatchItemWriter 中
   private static class PassThroughConverter<T> implements Converter<T, T> {
 
     @Override
