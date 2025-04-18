@@ -25,22 +25,29 @@ import org.apache.ibatis.transaction.Transaction;
 import org.apache.ibatis.transaction.TransactionFactory;
 
 /**
+ * SpringManagedTransaction 的工厂实现类（实现 TransactionFactory 接口）
+ * mybatis继承Spring管理事务的工厂
  * Creates a {@code SpringManagedTransaction}.
  *
  * @author Hunter Presnall
  */
 public class SpringManagedTransactionFactory implements TransactionFactory {
 
+  // 创建 SpringManagedTransaction 对象
   @Override
   public Transaction newTransaction(DataSource dataSource, TransactionIsolationLevel level, boolean autoCommit) {
+    // 创建 SpringManagedTransaction 对象
     return new SpringManagedTransaction(dataSource);
   }
 
+  // 创建 SpringManagedTransaction 对象
   @Override
   public Transaction newTransaction(Connection conn) {
+    // 抛出异常，因为 Spring 事务，需要一个 DataSource 对象
     throw new UnsupportedOperationException("New Spring transactions require a DataSource");
   }
 
+  // 设置属性
   @Override
   public void setProperties(Properties props) {
     // not needed in this version
